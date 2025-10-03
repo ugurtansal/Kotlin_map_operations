@@ -4,14 +4,17 @@ import android.Manifest
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
@@ -23,6 +26,8 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.snackbar.Snackbar
 import com.ugurtansal.mapprocess.databinding.ActivityMapsBinding
+import java.util.Locale
+import androidx.core.content.edit
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
 
@@ -37,7 +42,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        print("On create done---------------------")
+        println("On create done---------------------")
         super.onCreate(savedInstanceState)
 
         binding = ActivityMapsBinding.inflate(layoutInflater)
@@ -57,7 +62,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
 
 
     override fun onMapReady(googleMap: GoogleMap) {
-        print("Map is ready---------------------")
+        println("Map is ready---------------------")
         mMap = googleMap
 
         mMap.setOnMapLongClickListener(this)
@@ -79,7 +84,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
         locationListener =
             object : LocationListener { // locationListener interface ini implement ettik
                 override fun onLocationChanged(location: Location) {
-                    print("Location changed---------------------")
+                    println("Location changed---------------------")
 
                     followBoolean=sharedPreferences.getBoolean("followBoolean",false)
                     if(!followBoolean!!){
@@ -88,7 +93,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
                         mMap.addMarker(MarkerOptions().position(userLocation).title("Your Location"))
                         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userLocation, 14f))
 
-                        sharedPreferences.edit().putBoolean("followBoolean",true).apply()
+                        sharedPreferences.edit() { putBoolean("followBoolean", true) }
                     }
 
 
@@ -159,10 +164,34 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLon
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onMapLongClick(p0: LatLng) {
         mMap.clear()
 
-        println(p0.latitude)
-        println(p0.longitude)
+        val geocoder = Geocoder(this@MapsActivity, Locale.getDefault()) // adresi koordinata çevirmek için
+                                                                        //Eğer spesifik bir bölgenin adreslerini istiyorsak Locale("tr","TR") yapabiliriz
+        var address = ""
+        try {
+           geocoder.getFromLocation(p0.latitude,p0.longitude,1,Geocoder.GeocodeListener {addresses->
+               val firstAddress=addresses.first()
+
+               val countryName=firstAddress.countryName
+               val locality=firstAddress.locality
+               val thoroughfare=firstAddress.thoroughfare
+               val subThoroughfare=firstAddress.subThoroughfare
+
+               address+=locality
+               address+= thoroughfare
+               address+= subThoroughfare
+               address+= countryName
+
+               println(address)
+            })
+        }catch (e:Exception){
+
+            e.printStackTrace()
+
+        }
+        mMap.addMarker(MarkerOptions().position(p0))
     }
 }
