@@ -2,6 +2,7 @@ package com.ugurtansal.mapprocess
 
 import android.Manifest
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
@@ -23,13 +24,16 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.snackbar.Snackbar
 import com.ugurtansal.mapprocess.databinding.ActivityMapsBinding
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
     private lateinit var locationManager: LocationManager
     private lateinit var  locationListener: LocationListener
     private lateinit var permissionLauncher: ActivityResultLauncher<String>
+
+    var followBoolean: Boolean? = null
+    private lateinit var sharedPreferences: SharedPreferences
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,12 +49,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
 
         registerLauncher()
+
+        sharedPreferences=getSharedPreferences("com.ugurtansal.mapprocess", MODE_PRIVATE)
+        followBoolean=false
+
     }
 
 
     override fun onMapReady(googleMap: GoogleMap) {
         print("Map is ready---------------------")
         mMap = googleMap
+
+        mMap.setOnMapLongClickListener(this)
 
         // Add a marker in Sydney and move the camera
 
@@ -70,10 +80,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             object : LocationListener { // locationListener interface ini implement ettik
                 override fun onLocationChanged(location: Location) {
                     print("Location changed---------------------")
-                    //mMap.clear() //Daha önce koyulan markerları siler
-                    val userLocation = LatLng(location.latitude, location.longitude)
-                    mMap.addMarker(MarkerOptions().position(userLocation).title("Your Location"))
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userLocation, 14f))
+
+                    followBoolean=sharedPreferences.getBoolean("followBoolean",false)
+                    if(!followBoolean!!){
+                        mMap.clear() //Daha önce koyulan markerları siler , genellikle takip modunda kullanılır
+                        val userLocation = LatLng(location.latitude, location.longitude)
+                        mMap.addMarker(MarkerOptions().position(userLocation).title("Your Location"))
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userLocation, 14f))
+
+                        sharedPreferences.edit().putBoolean("followBoolean",true).apply()
+                    }
+
+
                 }
             }
 
@@ -139,5 +157,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
 
 
+    }
+
+    override fun onMapLongClick(p0: LatLng) {
+        mMap.clear()
+
+        println(p0.latitude)
+        println(p0.longitude)
     }
 }
